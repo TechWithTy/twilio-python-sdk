@@ -1,4 +1,5 @@
 import os
+import asyncio
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -17,22 +18,20 @@ ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
 AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 
 
-def example():
+async def main() -> None:
     """
-    Example of using the ValidationClient for signed requests to Twilio.
-    This is only available to enterprise customers.
-
-    This will walkthrough creating an API Key, generating an RSA keypair, setting up a
-    ValidationClient with these values and making requests with the client.
+    Async example of using the ValidationClient for signed requests to Twilio.
+    Enterprise feature only.
     """
     client = Client(ACCOUNT_SID, AUTH_TOKEN)
 
     # Using Client Validation requires using API Keys for auth
-    # First create an API key using the standard account sid, auth token client
     print("Creating new api key...")
-    api_key = client.new_keys.create(friendly_name="ClientValidationApiKey")
+    api_key = await asyncio.to_thread(
+        lambda: client.new_keys.create(friendly_name="ClientValidationApiKey")
+    )
 
-    # Generate a new RSA Keypair
+    # Generate a new RSA Keypair (CPU-bound; quick enough to run inline)
     print("Generating RSA key pair...")
     key_pair = rsa.generate_private_key(
         public_exponent=65537, key_size=2048, backend=default_backend()
@@ -46,8 +45,10 @@ def example():
 
     # Register the public key with Twilio
     print("Registering public key with Twilio...")
-    credential = client.accounts.credentials.public_key.create(
-        public_key, friendly_name="ClientValidationPublicKey"
+    credential = await asyncio.to_thread(
+        lambda: client.accounts.credentials.public_key.create(
+            public_key, friendly_name="ClientValidationPublicKey"
+        )
     )
 
     # Create a new ValidationClient with the keys we created
@@ -62,12 +63,12 @@ def example():
 
     # Use the library as usual
     print("Trying out client validation...")
-    messages = client.messages.list(limit=10)
+    messages = await asyncio.to_thread(lambda: client.messages.list(limit=10))
     for m in messages:
-        print("Message {}".format(m.sid))
+        print(f"Message {m.sid}")
 
     print("Client validation works!")
 
 
 if __name__ == "__main__":
-    example()
+    asyncio.run(main())

@@ -1,4 +1,5 @@
 import os
+import asyncio
 
 from twilio.rest import Client
 from twilio.credential.orgs_credential_provider import OrgsCredentialProvider
@@ -12,21 +13,24 @@ CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 ORGS_SID = os.environ.get("ORGS_SID")
 
 
-def example():
+async def main() -> None:
     """
-    Some example usage of using organization resources
+    Async example usage of organization resources
     """
     client = Client(
         account_sid=ACCOUNT_SID,
         credential_provider=OrgsCredentialProvider(CLIENT_ID, CLIENT_SECRET),
     )
 
-    accounts = client.preview_iam.organization(
-        organization_sid=ORGS_SID
-    ).accounts.stream()
-    for record in accounts:
+    def _stream_accounts():
+        return list(
+            client.preview_iam.organization(organization_sid=ORGS_SID).accounts.stream()
+        )
+
+    records = await asyncio.to_thread(_stream_accounts)
+    for record in records:
         print(record)
 
 
 if __name__ == "__main__":
-    example()
+    asyncio.run(main())
